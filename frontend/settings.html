@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型设置 - AgentRound</title>
+    <script defer src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: { 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 500: '#14b8a6', 700: '#0f766e' },
+                        violet: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 500: '#8b5cf6', 700: '#6d28d9' },
+                        blue: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 500: '#f97316', 700: '#c2410c' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Anti-FOUC: Hide body until loaded */
+        body {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+    <script>
+        // Reveal body after load
+        window.addEventListener('load', () => document.body.style.opacity = '1');
+    </script>
+</head>
+
+<body
+    class="bg-gray-50 h-screen flex flex-col text-gray-800 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
+
+    <!-- Header -->
+    <header
+        class="h-16 flex-none bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center px-6 justify-between z-10">
+        <div class="flex items-center gap-4">
+            <a href="/"
+                class="flex items-center justify-center p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                <i class="ph ph-arrow-left text-xl"></i>
+            </a>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <i class="ph ph-gear-six text-gray-400"></i>
+                模型配置
+            </h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Sidebar: Model List -->
+        <aside class="w-72 flex-none bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-gray-100">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">选择模型</h2>
+            </div>
+            <div id="model-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- Model Items will be injected here -->
+                <div class="animate-pulse flex items-center p-3 gap-3">
+                    <div class="w-8 h-8 rounded bg-gray-200"></div>
+                    <div class="h-4 bg-gray-200 w-24 rounded"></div>
+                </div>
+            </div>
+            <!-- Add Provider Footer -->
+            <div class="p-3 border-t border-gray-100">
+                <button id="add-provider-btn"
+                    class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm font-medium">
+                    <i class="ph ph-plus"></i>
+                    添加 Provider
+                </button>
+            </div>
+        </aside>
+
+        <!-- Editor Area -->
+        <main class="flex-1 flex flex-col bg-gray-50">
+            <div id="empty-state" class="h-full flex flex-col items-center justify-center text-gray-400">
+                <i class="ph ph-sliders-horizontal text-4xl mb-3"></i>
+                <p>请在左侧选择一个模型进行配置</p>
+            </div>
+
+            <div id="editor-container" class="hidden h-full flex flex-col p-8 max-w-4xl mx-auto w-full">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 id="current-model-name" class="text-2xl font-bold text-gray-800">Model Name</h2>
+                            <p class="text-sm text-gray-500 mt-1">Provider: <span
+                                    id="current-provider-name">OpenAI</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Provider Config Section -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+                    <h3 class="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="ph ph-plugs-connected text-gray-400"></i> Provider 配置
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">API
+                                Key</label>
+                            <input id="provider-api-key" type="password"
+                                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                placeholder="sk-...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Base
+                                URL</label>
+                            <input id="provider-base-url" type="text"
+                                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                placeholder="https://api.openai.com/v1">
+                        </div>
+                    </div>
+                    <div class="mt-3 flex justify-end">
+                        <button id="save-provider-btn"
+                            class="text-sm text-blue-600 hover:text-blue-700 font-medium px-4 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                            更新 Provider 配置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Prompt Editor -->
+                <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600">系统提示词 (System Prompt)</span>
+                        <span class="text-xs text-gray-400">支持 Markdown</span>
+                    </div>
+                    <textarea id="prompt-editor"
+                        class="flex-1 w-full p-4 resize-none focus:outline-none text-gray-700 font-mono text-sm leading-relaxed"
+                        placeholder="输入模型的系统提示词..."></textarea>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <span id="save-status" class="text-sm text-green-600 opacity-0 transition-opacity">已保存</span>
+                    <button id="save-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2">
+                        <i class="ph ph-floppy-disk"></i>
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay"
+        class="hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 transition-opacity duration-200">
+
+        <!-- Add Provider Modal -->
+        <div id="add-provider-modal"
+            class="hidden bg-white rounded-2xl shadow-xl w-full max-w-md transform scale-95 transition-transform duration-200">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">添加 Provider</h3>
+                    <button class="close-modal text-gray-400 hover:text-gray-600"><i
+                            class="ph ph-x text-lg"></i></button>
+                </div>
+                <form id="add-provider-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">ID (Unique)</label>
+                            <input name="id" type="text" required
+                                class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                placeholder="e.g. deepseek">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                            <input name="name" type="text" required
+                                class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                placeholder="e.g. DeepSeek">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                        <select name="type" class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm outline-none">
+                            <option value="openai">OpenAI Compatible (Recommended)</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="google">Google Gemini</option>
+                            <option value="ollama">Ollama</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">API Key</label>
+                        <input name="api_key" type="password"
+                            class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                            placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Base URL</label>
+                        <input name="base_url" type="text"
+                            class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                            placeholder="https://api.example.com/v1">
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button"
+                            class="close-modal text-gray-500 hover:text-gray-700 font-medium text-sm px-4 py-2">取消</button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">创建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Model Modal -->
+        <div id="add-model-modal"
+            class="hidden bg-white rounded-2xl shadow-xl w-full max-w-md transform scale-95 transition-transform duration-200">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="text-lg font-bold text-gray-800">添加模型</h3>
+                    <button class="close-modal text-gray-400 hover:text-gray-600"><i
+                            class="ph ph-x text-lg"></i></button>
+                </div>
+                <p class="text-sm text-gray-500 mb-4">添加到 <span id="target-provider-id"
+                        class="font-mono bg-gray-100 px-1 rounded text-gray-700"></span></p>
+
+                <form id="add-model-form" class="space-y-4">
+                    <input type="hidden" name="provider_id">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Model ID (API Name)</label>
+                        <input name="id" type="text" required
+                            class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                            placeholder="e.g. gpt-4-turbo">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Display Name</label>
+                        <input name="display_name" type="text" required
+                            class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                            placeholder="e.g. GPT-4 Turbo">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Icon (Phosphor)</label>
+                            <input name="icon" type="text" value="robot"
+                                class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none"
+                                placeholder="robot">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Color</label>
+                            <select name="color"
+                                class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm outline-none">
+                                <option value="teal">Teal</option>
+                                <option value="blue">Blue</option>
+                                <option value="violet">Violet</option>
+                                <option value="orange">Orange</option>
+                                <option value="rose">Rose</option>
+                                <option value="gray">Gray</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button"
+                            class="close-modal text-gray-500 hover:text-gray-700 font-medium text-sm px-4 py-2">取消</button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+
+</html>

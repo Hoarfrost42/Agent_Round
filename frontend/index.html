@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentRound - 多模型协作圆桌</title>
+    <!-- Tailwind CSS -->
+    <script defer src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'gpt': { 50: '#f0fdfa', 100: '#ccfbf1', 700: '#0f766e' }, // teal
+                        'claude': { 50: '#f5f3ff', 100: '#ede9fe', 700: '#6d28d9' }, // violet
+                        'gemini': { 50: '#eff6ff', 100: '#dbeafe', 700: '#1d4ed8' }, // blue
+                    },
+                    animation: {
+                        'blink': 'blink 1s step-start infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Phosphor Icons -->
+    <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Anti-FOUC: Hide body until loaded */
+        body {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+    <script>
+        window.addEventListener('load', () => document.body.style.opacity = '1');
+    </script>
+</head>
+
+<body class="bg-gray-100 text-gray-900 h-screen overflow-hidden flex">
+
+    <!-- 1. Sidebar -->
+    <!-- 1. Sidebar -->
+    <aside class="w-72 bg-gray-50 border-r border-gray-200 flex flex-col h-full bg-white">
+        <!-- Brand -->
+        <div class="h-16 flex items-center px-4 border-b border-gray-100">
+            <i class="ph ph-chats-circle text-2xl text-blue-600 mr-2"></i>
+            <span class="font-bold text-lg text-gray-800">AgentRound</span>
+        </div>
+
+        <!-- New Chat Button -->
+        <div class="p-4">
+            <button id="new-chat-btn"
+                class="w-full flex items-center justify-center gap-2 bg-white hover:border-blue-400 text-gray-700 font-medium py-2.5 px-4 border border-gray-200 rounded-xl shadow-sm transition-colors">
+                <i class="ph ph-plus text-lg"></i>
+                新一轮讨论
+            </button>
+        </div>
+
+        <!-- History List (Scrollable) -->
+        <div id="history-list" class="flex-1 overflow-y-auto px-2 space-y-1">
+            <!-- Dynamic content will be loaded here -->
+        </div>
+
+        <!-- User/Settings -->
+        <div class="p-4 border-t border-gray-200 flex justify-between items-center">
+            <button id="settings-btn"
+                class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm font-medium">
+                <i class="ph ph-gear"></i>
+                设置
+            </button>
+            <button id="exit-btn"
+                class="flex items-center gap-2 text-red-400 hover:text-red-600 transition-colors text-sm font-medium"
+                title="关闭服务">
+                <i class="ph ph-power"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 2. Main Content -->
+    <main class="flex-1 flex flex-col h-full relative">
+        <header
+            class="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-6 z-10 sticky top-0">
+            <div class="flex items-center gap-4">
+                <div class="text-sm font-medium text-gray-500">参与模型:</div>
+                <!-- Model Tags -->
+                <div id="model-list-container" class="flex items-center gap-2">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+
+            <!-- Status Indicator -->
+            <div id="status-badge"
+                class="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-sm font-medium border border-amber-100 hidden">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span id="status-text">讨论中...</span>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <div id="chat-container"
+            class="flex-1 overflow-y-auto p-6 pb-60 space-y-8 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)]"
+            style="background-size: 20px 20px;">
+            <!-- Dynamic Messages -->
+            <div class="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                <i class="ph ph-chats-circle text-4xl"></i>
+                <p>选择模型并开始讨论</p>
+            </div>
+        </div>
+
+        <!-- Input Area (Floating) -->
+        <div class="absolute bottom-6 left-0 right-0 px-6 flex justify-center z-20">
+            <div
+                class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 flex items-end gap-2 transform transition-all hover:scale-[1.005]">
+                <textarea id="input-textarea" rows="1" placeholder="输入指令，或按 Enter 发送..."
+                    class="w-full bg-transparent border-0 focus:ring-0 p-3 resize-none max-h-32 text-gray-700 placeholder-gray-400"
+                    style="min-height: 48px;"></textarea>
+                <button id="send-button"
+                    class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="ph-bold ph-paper-plane-tilt text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Decision Card (Overlay Example - Hidden by default in logic but shown here for layout) -->
+        <div class="absolute bottom-28 left-1/2 transform -translate-x-1/2 w-full max-w-md hidden">
+            <div
+                class="bg-white/90 backdrop-blur border border-gray-200 p-4 rounded-2xl shadow-xl flex flex-col gap-3 animate-fade-in-up">
+                <div class="flex items-center gap-2 text-gray-700 font-medium">
+                    <i class="ph-fill ph-info text-blue-500"></i>
+                    本轮讨论结束，请决策：
+                </div>
+                <div class="flex gap-3">
+                    <button
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium transition-colors">
+                        认可共识 (结束)
+                    </button>
+                    <button
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                        引导下一轮
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Main Logic -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
