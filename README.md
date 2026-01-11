@@ -18,7 +18,6 @@
 
 ## 后端 (Backend)
 
-> **维护者**：Backend Agent
 
 ### 技术栈
 
@@ -105,7 +104,6 @@ uvicorn backend.main:app --reload --port 8000
 
 ## 前端 (Frontend)
 
-> **维护者**：Frontend Agent
 
 ### 技术栈
 
