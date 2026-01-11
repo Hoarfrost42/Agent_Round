@@ -12,6 +12,7 @@ import yaml
 
 from backend.api.schemas import ModelConfig, ProviderConfig, ProviderUpdateRequest
 from backend.config.settings import load_settings
+from backend.core.crypto import ProviderCrypto, is_encrypted
 from backend.providers.anthropic_provider import AnthropicProvider
 from backend.providers.base import BaseProvider
 from backend.providers.google_provider import GoogleProvider
@@ -41,6 +42,43 @@ def _expand_env(data: Any) -> Any:
     if isinstance(data, str):
         return _expand_env_value(data)
     return data
+
+
+def _is_env_placeholder(value: str) -> bool:
+    """Return True when the string looks like an env placeholder."""
+
+    return bool(ENV_PATTERN.fullmatch(value.strip()))
+
+
+def _resolve_crypto() -> ProviderCrypto | None:
+    """Return a crypto helper if encryption is configured."""
+
+    settings = load_settings()
+    if not settings.providers_encryption_key:
+        return None
+    return ProviderCrypto(settings.providers_encryption_key)
+
+
+def _decrypt_api_key(value: str | None, crypto: ProviderCrypto | None) -> str | None:
+    """Decrypt an API key if it is encrypted."""
+
+    if value is None:
+        return None
+    if is_encrypted(value):
+        if crypto is None:
+            raise ValueError("Encrypted API key requires PROVIDERS_ENC_KEY to decrypt.")
+        return crypto.decrypt(value)
+    return value
+
+
+def _encrypt_api_key(value: str | None, crypto: ProviderCrypto | None) -> str | None:
+    """Encrypt an API key when encryption is configured."""
+
+    if value is None:
+        return None
+    if _is_env_placeholder(value) or is_encrypted(value) or crypto is None:
+        return value
+    return crypto.encrypt(value)
 
 
 def _load_yaml(file_path: Path) -> dict[str, Any]:
@@ -83,7 +121,7 @@ class ProviderRegistry:
         """Initialize the registry with a provider config file path."""
 
         self._providers_file = providers_file
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._configs: dict[str, ProviderConfig] = {}
         self._providers: dict[str, BaseProvider] = {}
         self._model_index: dict[str, tuple[str, ModelConfig]] = {}
@@ -92,11 +130,15 @@ class ProviderRegistry:
         """Load provider configs from disk and refresh instances."""
 
         with self._lock:
+            crypto = _resolve_crypto()
             data = _load_yaml(self._providers_file)
             providers_raw = data.get("providers", [])
             if not isinstance(providers_raw, list):
                 raise ValueError("providers field must be a list.")
             expanded = _expand_env(providers_raw)
+            for item in expanded:
+                if isinstance(item, dict) and "api_key" in item:
+                    item["api_key"] = _decrypt_api_key(item.get("api_key"), crypto)
             self._configs = {
                 item["id"]: ProviderConfig.model_validate(item) for item in expanded
             }
@@ -129,6 +171,7 @@ class ProviderRegistry:
         """Update a provider configuration and persist to disk."""
 
         with self._lock:
+            crypto = _resolve_crypto()
             data = _load_yaml(self._providers_file)
             providers_raw = data.get("providers", [])
             if not isinstance(providers_raw, list):
@@ -144,7 +187,7 @@ class ProviderRegistry:
             if "name" in changes:
                 target["name"] = changes["name"]
             if "api_key" in changes:
-                target["api_key"] = changes["api_key"]
+                target["api_key"] = _encrypt_api_key(changes["api_key"], crypto)
             if "base_url" in changes:
                 target["base_url"] = changes["base_url"]
             _save_yaml(self._providers_file, data)
@@ -211,6 +254,7 @@ class ProviderRegistry:
         """Add a new provider to the configuration."""
 
         with self._lock:
+            crypto = _resolve_crypto()
             if config.id in self._configs:
                 raise ValueError(f"Provider ID already exists: {config.id}")
 
@@ -222,6 +266,7 @@ class ProviderRegistry:
             
             # Serialize headers
             provider_dict = config.model_dump(exclude_unset=True)
+            provider_dict["api_key"] = _encrypt_api_key(provider_dict.get("api_key"), crypto)
             providers_raw.append(provider_dict)
             
             _save_yaml(self._providers_file, data)

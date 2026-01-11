@@ -21,6 +21,10 @@ from backend.providers.registry import get_provider_registry
 from backend.storage.store_factory import get_session_store
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 

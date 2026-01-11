@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, AsyncIterator
 
 from backend.api.schemas import ProviderConfig
 
@@ -22,6 +22,12 @@ class BaseProvider(ABC):
 
         return self._config
 
+    @property
+    def supports_streaming(self) -> bool:
+        """Return True if the provider supports real-time streaming."""
+
+        return False
+
     @abstractmethod
     async def generate(
         self,
@@ -33,3 +39,14 @@ class BaseProvider(ABC):
         """Generate a response from the provider."""
 
         raise NotImplementedError
+
+    async def generate_stream(
+        self,
+        messages: list[dict[str, Any]],
+        model_id: str,
+        temperature: float = 0.7,
+        max_tokens: int | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream response chunks from the provider."""
+
+        yield await self.generate(messages, model_id, temperature, max_tokens)

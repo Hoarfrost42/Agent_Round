@@ -7,11 +7,13 @@
 - **核心功能**：用户发起话题 → 多模型轮次发言 → 用户引导 → 达成共识
 - **新特性**：
     - 支持多种 LLM Provider (OpenAI, Anthropic, Google, Ollama)
-    - 实时 SSE流式响应
+    - 实时 SSE 流式响应（OpenAI/Gemini 支持真实流式）
     - 前端可配置 Prompt 和 API Key
     - **动态模型/Provider 管理** (支持 UI 添加自定义模型)
     - **UI/UX 优化**：优化的对话滚动体验与输入布局
     - 支持一键关闭服务释放端口
+    - 请求重试、可选并行调用、API Key 加密存储（可选）
+    - **多模型圆桌兼容**：优化 Gemini 在多模型场景的回复稳定性
 - **详细规划**：见 [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 ---
@@ -57,6 +59,12 @@ uvicorn backend.main:app --reload --port 8000
 - `SSE_TOKEN_CHUNK_SIZE`：SSE 分块大小（默认 4）
 - `TITLE_MAX_LENGTH`：自动标题最大长度（默认 24）
 - `THOUGHT_FILTER_ENABLED`：是否过滤 `<think>` 等思维链（默认 true）
+- `REQUEST_RETRY_ATTEMPTS`：请求重试次数（默认 3）
+- `REQUEST_RETRY_BACKOFF_BASE`：重试退避基准秒数（默认 0.5）
+- `REQUEST_RETRY_MAX_DELAY`：重试最大延迟秒数（默认 5）
+- `PARALLEL_MODEL_CALLS`：并行模型调用开关（默认 false）
+- `PROVIDER_REQUEST_TIMEOUT`：Provider 请求超时秒数（默认 120，<=0 表示不限制）
+- `PROVIDERS_ENC_KEY`：Provider API Key 加密密钥（Fernet key）
 - `PORT`：启动脚本默认端口（默认 8000）
 - `ENABLE_RELOAD`：启动脚本是否启用热更新（默认 0）
 
@@ -97,7 +105,7 @@ uvicorn backend.main:app --reload --port 8000
 - [x] Provider 抽象层
 - [x] OpenAI Provider
 - [x] Session 管理
-- [x] SSE 流式输出（Token 分块）
+- [x] SSE 流式输出（真实流式，非流式回退分块）
 - [x] SQLite 持久化
 
 ---
@@ -176,6 +184,8 @@ providers:
         color: teal
         icon: robot
 ```
+
+提示：当设置 `PROVIDERS_ENC_KEY` 时，API Key 会以 `enc:` 前缀加密保存；使用 `${ENV}` 占位符的字段不会被加密。
 
 ---
 

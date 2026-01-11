@@ -22,6 +22,12 @@ class Settings:
     sse_token_chunk_size: int
     title_max_length: int
     thought_filter_enabled: bool
+    request_retry_attempts: int
+    request_retry_backoff_base: float
+    request_retry_max_delay: float
+    parallel_model_calls: bool
+    provider_request_timeout: float | None
+    providers_encryption_key: str | None
 
 
 def _project_root() -> Path:
@@ -45,6 +51,17 @@ def load_settings() -> Settings:
     sse_token_chunk_size = max(1, int(os.getenv("SSE_TOKEN_CHUNK_SIZE", "4")))
     title_max_length = max(8, int(os.getenv("TITLE_MAX_LENGTH", "24")))
     thought_filter_enabled = _parse_bool(os.getenv("THOUGHT_FILTER_ENABLED", "true"))
+    request_retry_attempts = max(1, int(os.getenv("REQUEST_RETRY_ATTEMPTS", "3")))
+    request_retry_backoff_base = max(0.1, float(os.getenv("REQUEST_RETRY_BACKOFF_BASE", "0.5")))
+    request_retry_max_delay = max(
+        request_retry_backoff_base, float(os.getenv("REQUEST_RETRY_MAX_DELAY", "5"))
+    )
+    parallel_model_calls = _parse_bool(os.getenv("PARALLEL_MODEL_CALLS", "false"))
+    provider_request_timeout_raw = float(os.getenv("PROVIDER_REQUEST_TIMEOUT", "120"))
+    provider_request_timeout = (
+        None if provider_request_timeout_raw <= 0 else provider_request_timeout_raw
+    )
+    providers_encryption_key = os.getenv("PROVIDERS_ENC_KEY") or None
     return Settings(
         project_root=project_root,
         config_dir=config_dir,
@@ -57,6 +74,12 @@ def load_settings() -> Settings:
         sse_token_chunk_size=sse_token_chunk_size,
         title_max_length=title_max_length,
         thought_filter_enabled=thought_filter_enabled,
+        request_retry_attempts=request_retry_attempts,
+        request_retry_backoff_base=request_retry_backoff_base,
+        request_retry_max_delay=request_retry_max_delay,
+        parallel_model_calls=parallel_model_calls,
+        provider_request_timeout=provider_request_timeout,
+        providers_encryption_key=providers_encryption_key,
     )
 
 
