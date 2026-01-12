@@ -324,6 +324,49 @@ class ProviderRegistry:
 _registry_instance: ProviderRegistry | None = None
 
 
+def _delete_model_impl(registry: ProviderRegistry, provider_id: str, model_id: str) -> None:
+    """Internal: Delete a model from a provider."""
+    data = _load_yaml(registry._providers_file)
+    providers_raw = data.get("providers", [])
+    target_provider = None
+    for item in providers_raw:
+        if item.get("id") == provider_id:
+            target_provider = item
+            break
+
+    if target_provider is None:
+        raise KeyError(f"Provider not found in YAML: {provider_id}")
+
+    models_list = target_provider.get("models", [])
+    if not isinstance(models_list, list):
+        raise KeyError(f"Model not found: {model_id}")
+
+    # Find and remove the model
+    model_found = False
+    for i, m in enumerate(models_list):
+        if m.get("id") == model_id:
+            models_list.pop(i)
+            model_found = True
+            break
+
+    if not model_found:
+        raise KeyError(f"Model not found: {model_id}")
+
+    _save_yaml(registry._providers_file, data)
+    registry.load()
+
+
+# Monkey-patch delete_model onto ProviderRegistry
+def _delete_model_method(self, provider_id: str, model_id: str) -> None:
+    """Delete a model from a provider."""
+    with self._lock:
+        if provider_id not in self._configs:
+            raise KeyError(f"Provider not found: {provider_id}")
+        _delete_model_impl(self, provider_id, model_id)
+
+ProviderRegistry.delete_model = _delete_model_method
+
+
 def get_provider_registry() -> ProviderRegistry:
     """Return the singleton provider registry."""
 

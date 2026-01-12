@@ -63,3 +63,105 @@
     color: currentColor;
     margin-left: 2px;
 }
+
+/* Markdown Styles */
+.prose pre {
+    background: #f6f8fa;
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    border: 1px solid #e1e4e8;
+}
+
+.prose code {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.875rem;
+}
+
+.prose :not(pre)>code {
+    background: #f0f0f0;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    color: #d63384;
+}
+
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.prose th,
+.prose td {
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.prose th {
+    background: #f3f4f6;
+    font-weight: 600;
+}
+
+.prose tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.prose blockquote {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.prose ul,
+.prose ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.prose li {
+    margin: 0.25rem 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+    font-weight: 700;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.prose h1 {
+    font-size: 1.5rem;
+}
+
+.prose h2 {
+    font-size: 1.25rem;
+}
+
+.prose h3 {
+    font-size: 1.125rem;
+}
+
+.prose hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 1rem 0;
+}
+
+.prose a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.prose a:hover {
+    color: #1d4ed8;
+}
+
+/* Checkbox styling for task lists */
+.prose input[type="checkbox"] {
+    margin-right: 0.5rem;
+}

@@ -102,15 +102,26 @@ function renderSidebar(providers) {
                 const color = Utils.colorClasses[model.color] || Utils.colorClasses.gray;
 
                 item.className = `
-                    flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors
+                    flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors group
                     ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}
                 `;
-                item.onclick = () => selectModel(provider.id, model.id);
 
                 item.innerHTML = `
                     <i class="ph ph-${model.icon} ${isActive ? 'text-blue-500' : 'text-gray-400'}"></i>
-                    <span class="truncate flex-1">${model.display_name}</span>
+                    <span class="truncate flex-1" onclick="selectModel('${provider.id}', '${model.id}')">${model.display_name}</span>
+                    <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity p-1 delete-model-btn" 
+                            data-provider="${provider.id}" data-model="${model.id}" title="删除模型">
+                        <i class="ph ph-trash"></i>
+                    </button>
                 `;
+                item.querySelector('.truncate').onclick = (e) => {
+                    e.stopPropagation();
+                    selectModel(provider.id, model.id);
+                };
+                item.querySelector('.delete-model-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    deleteModel(provider.id, model.id, model.display_name);
+                };
                 list.appendChild(item);
             });
             group.appendChild(list);
@@ -179,6 +190,39 @@ async function selectModel(providerId, modelId) {
             UI.saveBtn.disabled = false;
             UI.promptEditor.focus();
         }
+    }
+}
+
+async function deleteModel(providerId, modelId, displayName) {
+    if (!confirm(`确定要删除模型 "${displayName}" 吗？此操作不可撤销。`)) {
+        return;
+    }
+
+    try {
+        // 不要使用 encodeURIComponent，因为 model_id 可能包含斜杠
+        const response = await fetch(`${api.baseUrl}/api/providers/${providerId}/models/${modelId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || '删除失败');
+        }
+
+        // Clear selection if deleted model was selected
+        if (State.currentProviderId === providerId && State.currentModelId === modelId) {
+            State.currentProviderId = null;
+            State.currentModelId = null;
+            UI.editorContainer.classList.add('hidden');
+            UI.emptyState.classList.remove('hidden');
+        }
+
+        // Reload providers list
+        await loadProviders();
+
+    } catch (e) {
+        console.error("Delete model failed:", e);
+        alert(`删除失败: ${e.message}`);
     }
 }
 

@@ -304,14 +304,22 @@ async def _stream_provider(
     settings: Settings,
     retry_config: RetryConfig,
 ) -> AsyncIterator[str]:
-    """Stream provider output with thought filtering."""
+    """Stream provider output with thought filtering and leading whitespace trimming."""
 
     thought_filter = StreamingThoughtFilter() if settings.thought_filter_enabled else None
+    first_content_seen = False
 
     async for chunk in _stream_with_retry(provider, messages, model_id, retry_config):
         safe_chunk = thought_filter.feed(chunk) if thought_filter else chunk
         if not safe_chunk:
             continue
+        # 跳过开头的纯空白 chunk（修复 Minimax 前导空行问题）
+        if not first_content_seen:
+            stripped = safe_chunk.lstrip()
+            if not stripped:
+                continue
+            safe_chunk = stripped
+            first_content_seen = True
         yield safe_chunk
 
     if thought_filter is not None:

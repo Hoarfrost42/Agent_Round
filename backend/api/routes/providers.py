@@ -112,3 +112,14 @@ async def add_model_to_provider(provider_id: str, payload: ModelConfig) -> Model
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.delete("/{provider_id}/models/{model_id:path}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_model_from_provider(provider_id: str, model_id: str) -> None:
+    """Delete a model from a provider."""
+
+    registry = get_provider_registry()
+    try:
+        registry.delete_model(provider_id, model_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

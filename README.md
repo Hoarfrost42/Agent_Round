@@ -83,6 +83,7 @@ uvicorn backend.main:app --reload --port 8000
 | `PUT` | `/api/providers/{id}` | 更新 Provider 配置 |
 | `POST` | `/api/providers` | **新增 Provider** |
 | `POST` | `/api/providers/{id}/models` | **新增模型** |
+| `DELETE` | `/api/providers/{pid}/models/{mid}` | **删除模型** |
 | `GET` | `/api/providers/{pid}/models/{mid}/prompt` | 获取模型提示词 |
 | `PUT` | `/api/providers/{pid}/models/{mid}/prompt` | 更新模型提示词 |
 | `POST` | `/api/sessions` | 创建会话 |
