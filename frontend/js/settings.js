@@ -143,6 +143,9 @@ async function selectModel(providerId, modelId) {
     State.currentProviderId = providerId;
     State.currentModelId = modelId;
 
+    // Clear template selection
+    currentTemplateId = null;
+
     // Find objects
     const provider = AppState.providers.find(p => p.id === providerId);
     if (!provider) return;
@@ -157,9 +160,10 @@ async function selectModel(providerId, modelId) {
     UI.providerApiKey.value = provider.api_key || ''; // Will be masked usually
     UI.providerBaseUrl.value = provider.base_url || '';
 
-    // Show Editor
+    // Show Editor, Hide template editor
     UI.emptyState.classList.add('hidden');
     UI.editorContainer.classList.remove('hidden');
+    document.getElementById('template-editor')?.classList.add('hidden');
 
     // UI Loading state
     UI.promptEditor.disabled = true;
@@ -168,6 +172,7 @@ async function selectModel(providerId, modelId) {
     UI.saveStatus.classList.add('opacity-0');
 
     renderSidebar(AppState.providers); // Update active state
+    renderTemplateSidebar(); // Clear template selection highlight
 
     // Load Prompt
     try {
