@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.api.routes import providers as providers_routes
 from backend.api.routes import sessions as sessions_routes
+from backend.api.routes import templates as templates_routes
 from backend.api.schemas import HealthResponse
 from backend.config.settings import load_settings
 from backend.providers.registry import get_provider_registry
@@ -87,6 +88,8 @@ def create_app() -> FastAPI:
 
     app.include_router(providers_routes.router)
     app.include_router(sessions_routes.router)
+    app.include_router(templates_routes.router)
+    logger.info("Registered templates router at /api/templates")
 
     if settings.frontend_dir.exists():
         app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")

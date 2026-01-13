@@ -122,4 +122,43 @@ class AgentAPI {
             method: 'DELETE'
         });
     }
+
+    // --- Templates ---
+    async getTemplates() {
+        return this._request('/api/templates');
+    }
+
+    async getChatTemplates() {
+        return this._request('/api/templates/chat');
+    }
+
+    async getPromptTemplates() {
+        return this._request('/api/templates/prompt');
+    }
+
+    async saveChatTemplate(id, template) {
+        return this._request(`/api/templates/chat/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(template)
+        });
+    }
+
+    async savePromptTemplate(id, template) {
+        return this._request(`/api/templates/prompt/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(template)
+        });
+    }
+
+    async deleteChatTemplate(id) {
+        return this._request(`/api/templates/chat/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async deletePromptTemplate(id) {
+        return this._request(`/api/templates/prompt/${id}`, {
+            method: 'DELETE'
+        });
+    }
 }

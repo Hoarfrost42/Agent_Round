@@ -53,7 +53,10 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
     console.log('Initializing Settings...');
     await loadProviders();
+    await loadChatTemplatesFromAPI();
+    await loadPromptTemplatesFromAPI();
     setupEventListeners();
+    setupPromptTemplateDropdown();
 }
 
 async function loadProviders() {
@@ -365,4 +368,377 @@ function setupEventListeners() {
             alert('创建失败: ' + err.message);
         }
     });
+
+    // Template management
+    document.getElementById('add-template-btn')?.addEventListener('click', addNewTemplate);
+    document.getElementById('reset-templates-btn')?.addEventListener('click', resetTemplates);
+    document.getElementById('save-tpl-btn')?.addEventListener('click', saveCurrentTemplate);
+    document.getElementById('delete-tpl-btn')?.addEventListener('click', deleteCurrentTemplate);
+
+    // Initialize template sidebar
+    renderTemplateSidebar();
 }
+
+// ========== Template Management ==========
+
+// Cache for templates (loaded from backend)
+let chatTemplatesCache = null;
+
+async function loadChatTemplatesFromAPI() {
+    try {
+        chatTemplatesCache = await api.getChatTemplates();
+    } catch (e) {
+        console.error('Failed to load chat templates:', e);
+        chatTemplatesCache = {};
+    }
+    return chatTemplatesCache;
+}
+
+function loadTemplates() {
+    // Return cache if available, otherwise empty object
+    return chatTemplatesCache || {};
+}
+
+async function saveChatTemplateToAPI(id, template) {
+    try {
+        await api.saveChatTemplate(id, template);
+        if (chatTemplatesCache) chatTemplatesCache[id] = template;
+    } catch (e) {
+        console.error('Failed to save chat template:', e);
+    }
+}
+
+async function deleteChatTemplateFromAPI(id) {
+    try {
+        await api.deleteChatTemplate(id);
+        if (chatTemplatesCache) delete chatTemplatesCache[id];
+    } catch (e) {
+        console.error('Failed to delete chat template:', e);
+    }
+}
+
+// Render template list in sidebar
+function renderTemplateSidebar() {
+    const container = document.getElementById('template-sidebar-list');
+    if (!container) return;
+
+    const templates = loadTemplates();
+    container.innerHTML = '';
+
+    Object.entries(templates).forEach(([key, tpl]) => {
+        const item = document.createElement('div');
+        const isActive = currentTemplateId === key;
+        item.className = `flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${isActive ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}`;
+        item.innerHTML = `
+            <i class="ph ph-${tpl.icon || 'file-text'} ${isActive ? 'text-purple-600' : 'text-gray-400'}"></i>
+            <span class="truncate">${tpl.name}</span>
+        `;
+        item.onclick = () => selectTemplate(key);
+        container.appendChild(item);
+    });
+}
+
+// Select and show template in editor
+function selectTemplate(templateId) {
+    const templates = loadTemplates();
+    const tpl = templates[templateId];
+    if (!tpl) return;
+
+    currentTemplateId = templateId;
+    State.currentProviderId = null;
+    State.currentModelId = null;
+
+    // Hide other views, show template editor
+    UI.emptyState.classList.add('hidden');
+    UI.editorContainer.classList.add('hidden');
+    document.getElementById('template-editor').classList.remove('hidden');
+
+    // Populate editor
+    document.getElementById('tpl-editor-title').textContent = tpl.name;
+    document.getElementById('tpl-editor-id').textContent = templateId;
+    document.getElementById('tpl-edit-name').value = tpl.name;
+    document.getElementById('tpl-edit-icon').value = tpl.icon || 'file-text';
+    document.getElementById('tpl-edit-content').value = tpl.content;
+
+    // Update sidebar highlights
+    renderTemplateSidebar();
+    renderSidebar(AppState.providers);
+}
+
+// Current selected template
+let currentTemplateId = null;
+
+// Save current template
+async function saveCurrentTemplate() {
+    if (!currentTemplateId) return;
+
+    const template = {
+        name: document.getElementById('tpl-edit-name').value.trim(),
+        icon: document.getElementById('tpl-edit-icon').value.trim() || 'file-text',
+        content: document.getElementById('tpl-edit-content').value
+    };
+
+    await saveChatTemplateToAPI(currentTemplateId, template);
+
+    // Update title
+    document.getElementById('tpl-editor-title').textContent = template.name;
+
+    // Show saved status
+    const status = document.getElementById('tpl-save-status');
+    status.classList.remove('opacity-0');
+    setTimeout(() => status.classList.add('opacity-0'), 2000);
+
+    renderTemplateSidebar();
+}
+
+// Add new template
+async function addNewTemplate() {
+    const id = prompt('请输入模板 ID（英文小写，如 debug）：');
+    if (!id || !id.trim()) return;
+
+    const key = id.trim().toLowerCase().replace(/\s+/g, '-');
+    const templates = loadTemplates();
+
+    if (templates[key]) {
+        alert('该 ID 已存在');
+        return;
+    }
+
+    const newTemplate = { name: '新模板', icon: 'file-text', content: '模板内容...' };
+    await saveChatTemplateToAPI(key, newTemplate);
+
+    renderTemplateSidebar();
+    selectTemplate(key);
+}
+
+// Delete current template
+async function deleteCurrentTemplate() {
+    if (!currentTemplateId) return;
+    if (!confirm(`确定删除模板 "${currentTemplateId}" 吗？`)) return;
+
+    await deleteChatTemplateFromAPI(currentTemplateId);
+
+    currentTemplateId = null;
+    document.getElementById('template-editor').classList.add('hidden');
+    UI.emptyState.classList.remove('hidden');
+
+    renderTemplateSidebar();
+}
+
+// Reset to defaults (reload from server)
+async function resetTemplates() {
+    if (!confirm('确定恢复默认模板吗？请在服务器端恢复 templates.yaml 文件。')) return;
+
+    // Reload from API
+    await loadChatTemplatesFromAPI();
+    currentTemplateId = null;
+    document.getElementById('template-editor').classList.add('hidden');
+    UI.emptyState.classList.remove('hidden');
+
+    renderTemplateSidebar();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Default system prompt templates
+const DEFAULT_PROMPT_TEMPLATES = {
+    'roundtable': {
+        name: '圆桌讨论专家',
+        content: `你是一位专业的AI助手，正在参与一场多模型圆桌讨论。
+
+## 你的角色
+- **严谨分析**：确保不重复前人已经讨论过的观点
+- **差异补充**：使用[差异投资]模型，检查前人的方案在"难以"或"成本"上是否有漏洞
+- **深化拓展**：如果前人触出了现象，请指清楚更深层的成因
+- **魔鬼**：如果你不完全同意前人的观点，请坦诚地用温和语语进行反驳（Devil's Advocate）
+
+## 讨论已进入方案阶段
+- 请集中于[方案细节]与[风险评估]，不要再回头去说义"什么是问题"
+
+## Output Standards
+- **结构化**：使用 Markdown 格式，层级清晰
+- **言简意赅**：社团正确的宽式。如果同意前人观点，请直接确认并直接进入下一层级分析
+- **引用**：在必要获不支时，正式引用前序模型的建点。例如："针对 @ModelA 提出的架构方案，我认为在社离并发场景下存在..."`
+    },
+    'code-expert': {
+        name: '代码专家',
+        content: `你是一位资深软件工程师，专注于代码质量和最佳实践。
+
+## 专业领域
+- 代码审查与重构
+- 架构设计与模式
+- 性能优化
+- 安全最佳实践
+
+## 回复风格
+1. 直接指出问题所在
+2. 提供具体的改进建议和代码示例
+3. 解释背后的原理
+4. 考虑边界情况和潜在风险`
+    },
+    'analyst': {
+        name: '系统分析师',
+        content: `你是一位经验丰富的系统分析师，擅长将复杂问题分解为可管理的组件。
+
+## 分析框架
+1. **问题定义**：明确核心问题和边界
+2. **利益相关者**：识别所有受影响方
+3. **约束条件**：技术、时间、资源限制
+4. **方案评估**：多维度对比分析
+
+## 输出规范
+- 使用结构化格式
+- 提供数据支持的结论
+- 考虑短期和长期影响`
+    },
+    'creative': {
+        name: '创意助手',
+        content: `你是一位富有创造力的思维伙伴，帮助用户突破思维局限。
+
+## 核心原则
+- 鼓励发散思维，不过早否定想法
+- 从多个角度审视问题
+- 结合跨领域知识产生新见解
+- 保持开放和好奇的心态
+
+## 互动方式
+- 积极提问引导思考
+- 提供类比和比喻帮助理解
+- 建议非常规的解决方案`
+    },
+    'minimal': {
+        name: '简洁模式',
+        content: `请简洁直接地回答问题。避免冗余，直达要点。`
+    }
+};
+
+// Prompt templates cache
+let promptTemplatesCache = null;
+
+async function loadPromptTemplatesFromAPI() {
+    try {
+        promptTemplatesCache = await api.getPromptTemplates();
+    } catch (e) {
+        console.error('Failed to load prompt templates:', e);
+        promptTemplatesCache = {};
+    }
+    return promptTemplatesCache;
+}
+
+function loadPromptTemplates() {
+    return promptTemplatesCache || {};
+}
+
+async function savePromptTemplateToAPI(id, template) {
+    try {
+        await api.savePromptTemplate(id, template);
+        if (promptTemplatesCache) promptTemplatesCache[id] = template;
+    } catch (e) {
+        console.error('Failed to save prompt template:', e);
+    }
+}
+
+async function deletePromptTemplateFromAPI(id) {
+    try {
+        await api.deletePromptTemplate(id);
+        if (promptTemplatesCache) delete promptTemplatesCache[id];
+    } catch (e) {
+        console.error('Failed to delete prompt template:', e);
+    }
+}
+
+// Setup prompt template dropdown
+function setupPromptTemplateDropdown() {
+    const btn = document.getElementById('prompt-template-btn');
+    const menu = document.getElementById('prompt-template-menu');
+    if (!btn || !menu) return;
+
+    // Render menu items
+    function renderMenu() {
+        const templates = loadPromptTemplates();
+        menu.innerHTML = '<div class="px-3 py-1.5 text-xs text-gray-400 uppercase tracking-wider flex justify-between items-center"><span>选择模板</span></div>';
+
+        Object.entries(templates).forEach(([key, tpl]) => {
+            const item = document.createElement('button');
+            item.className = 'w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors flex items-center justify-between group';
+            item.innerHTML = `
+                <span>${tpl.name}</span>
+                <i class="ph ph-trash text-gray-300 group-hover:text-red-400 hover:text-red-500" onclick="event.stopPropagation(); deletePromptTemplate('${key}')"></i>
+            `;
+            item.onclick = (e) => {
+                if (e.target.classList.contains('ph-trash')) return;
+                e.stopPropagation();
+                UI.promptEditor.value = tpl.content;
+                menu.classList.add('hidden');
+            };
+            menu.appendChild(item);
+        });
+
+        // Divider and actions
+        const divider = document.createElement('div');
+        divider.className = 'border-t border-gray-100 my-1';
+        menu.appendChild(divider);
+
+        // Add template button
+        const addBtn = document.createElement('button');
+        addBtn.className = 'w-full px-3 py-2 text-left text-sm text-purple-600 hover:bg-purple-50 transition-colors flex items-center gap-2';
+        addBtn.innerHTML = '<i class="ph ph-plus"></i> 添加当前为模板';
+        addBtn.onclick = (e) => {
+            e.stopPropagation();
+            addCurrentAsPromptTemplate();
+            menu.classList.add('hidden');
+        };
+        menu.appendChild(addBtn);
+
+        // Reset button
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'w-full px-3 py-2 text-left text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors';
+        resetBtn.innerHTML = '<i class="ph ph-arrow-counter-clockwise"></i> 刷新';
+        resetBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await loadPromptTemplatesFromAPI();
+            renderMenu();
+        };
+        menu.appendChild(resetBtn);
+    }
+
+    renderMenu();
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renderMenu(); // Refresh on open
+        menu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', () => {
+        menu.classList.add('hidden');
+    });
+}
+
+// Add current prompt content as template
+async function addCurrentAsPromptTemplate() {
+    const content = UI.promptEditor.value.trim();
+    if (!content) {
+        alert('请先输入提示词内容');
+        return;
+    }
+
+    const name = prompt('请输入模板名称：');
+    if (!name || !name.trim()) return;
+
+    const id = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'custom-' + Date.now();
+    await savePromptTemplateToAPI(id, { name: name.trim(), content });
+    alert('模板已保存');
+}
+
+// Delete a prompt template
+async function deletePromptTemplate(key) {
+    if (!confirm(`确定删除模板 "${key}" 吗？`)) return;
+    await deletePromptTemplateFromAPI(key);
+}
+
+

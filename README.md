@@ -1,19 +1,24 @@
-# AgentRound
+# AgentRound v2.0
 
 多模型圆桌讨论工具 —— 让多个 AI 模型共享上下文、依次发言、协作达成共识。
 
 ## 项目概述
 
 - **核心功能**：用户发起话题 → 多模型轮次发言 → 用户引导 → 达成共识
-- **新特性**：
+- **v2.0 新特性**：
+    - ✨ **预设模板系统**：聊天模板 + 系统提示词模板，存储在本地 YAML 文件
+    - 📥 **会话导出**：导出对话为 Markdown 文件
+    - 📝 **Markdown 渲染**：支持代码高亮、表格等
+    - 🎯 **决策卡片**：每轮结束显示"认可共识/继续讨论"按钮
+    - 📦 **长回复折叠**：自动折叠超长消息
+    - 🗑️ **模型删除**：设置页面支持删除模型
+    - 🔧 **Gemini 多模型兼容**：优化多模型场景稳定性
+- **已有功能**：
     - 支持多种 LLM Provider (OpenAI, Anthropic, Google, Ollama)
-    - 实时 SSE 流式响应（OpenAI/Gemini 支持真实流式）
+    - 实时 SSE 流式响应
     - 前端可配置 Prompt 和 API Key
-    - **动态模型/Provider 管理** (支持 UI 添加自定义模型)
-    - **UI/UX 优化**：优化的对话滚动体验与输入布局
-    - 支持一键关闭服务释放端口
-    - 请求重试、可选并行调用、API Key 加密存储（可选）
-    - **多模型圆桌兼容**：优化 Gemini 在多模型场景的回复稳定性
+    - 动态模型/Provider 管理
+    - 请求重试、可选并行调用、API Key 加密存储
 - **详细规划**：见 [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 ---
@@ -81,9 +86,9 @@ uvicorn backend.main:app --reload --port 8000
 | `GET` | `/api/providers` | 获取模型列表 |
 | `GET` | `/api/providers/{id}` | 获取单个 Provider |
 | `PUT` | `/api/providers/{id}` | 更新 Provider 配置 |
-| `POST` | `/api/providers` | **新增 Provider** |
-| `POST` | `/api/providers/{id}/models` | **新增模型** |
-| `DELETE` | `/api/providers/{pid}/models/{mid}` | **删除模型** |
+| `POST` | `/api/providers` | 新增 Provider |
+| `POST` | `/api/providers/{id}/models` | 新增模型 |
+| `DELETE` | `/api/providers/{pid}/models/{mid}` | 删除模型 |
 | `GET` | `/api/providers/{pid}/models/{mid}/prompt` | 获取模型提示词 |
 | `PUT` | `/api/providers/{pid}/models/{mid}/prompt` | 更新模型提示词 |
 | `POST` | `/api/sessions` | 创建会话 |
@@ -95,6 +100,12 @@ uvicorn backend.main:app --reload --port 8000
 | `POST` | `/api/sessions/{id}/continue` | 继续下一轮对话 |
 | `POST` | `/api/sessions/{id}/end` | 结束对话 |
 | `GET` | `/api/sessions/{id}/stream` | SSE 流式输出 |
+| `GET` | `/api/sessions/{id}/export` | **导出对话为 Markdown** |
+| `GET` | `/api/templates` | **获取所有模板** |
+| `GET` | `/api/templates/chat` | 获取聊天模板 |
+| `GET` | `/api/templates/prompt` | 获取提示词模板 |
+| `PUT` | `/api/templates/{type}/{id}` | 保存模板 |
+| `DELETE` | `/api/templates/{type}/{id}` | 删除模板 |
 | `POST` | `/api/shutdown` | 关闭后端服务 |
 
 > 完整 API 文档见 `http://localhost:8000/docs`

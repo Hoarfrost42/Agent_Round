@@ -70,7 +70,27 @@
                 </div>
             </div>
             <!-- Add Provider Footer -->
-            <div class="p-3 border-t border-gray-100">
+            <div class="p-3 border-t border-gray-100 space-y-2">
+                <!-- Template Section -->
+                <div id="template-section" class="mb-2">
+                    <div class="flex items-center justify-between px-2 py-1">
+                        <span
+                            class="text-xs font-bold text-purple-500 uppercase tracking-wider flex items-center gap-1">
+                            <i class="ph ph-magic-wand"></i> 预设模板
+                        </span>
+                        <button id="add-template-btn" class="text-purple-400 hover:text-purple-600 p-1" title="添加模板">
+                            <i class="ph ph-plus"></i>
+                        </button>
+                    </div>
+                    <div id="template-sidebar-list" class="space-y-0.5 mt-1 pl-2">
+                        <!-- Template items injected here -->
+                    </div>
+                    <button id="reset-templates-btn"
+                        class="w-full mt-2 text-xs text-gray-400 hover:text-red-500 py-1 transition-colors">
+                        <i class="ph ph-arrow-counter-clockwise"></i> 恢复默认
+                    </button>
+                </div>
+
                 <button id="add-provider-btn"
                     class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm font-medium">
                     <i class="ph ph-plus"></i>
@@ -84,6 +104,68 @@
             <div id="empty-state" class="h-full flex flex-col items-center justify-center text-gray-400">
                 <i class="ph ph-sliders-horizontal text-4xl mb-3"></i>
                 <p>请在左侧选择一个模型进行配置</p>
+            </div>
+
+            <!-- Template Editor -->
+            <div id="template-editor" class="hidden h-full flex flex-col p-8 max-w-4xl mx-auto w-full">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 id="tpl-editor-title" class="text-2xl font-bold text-gray-800">模板名称</h2>
+                            <p class="text-sm text-gray-500 mt-1">ID: <span id="tpl-editor-id"
+                                    class="font-mono bg-gray-100 px-1.5 rounded">template-id</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Config -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+                    <h3 class="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="ph ph-info text-gray-400"></i> 基本信息
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">显示名称</label>
+                            <input id="tpl-edit-name" type="text"
+                                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">图标
+                                (Phosphor)</label>
+                            <input id="tpl-edit-icon" type="text"
+                                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                                placeholder="如: lightbulb, code, bug">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Editor -->
+                <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-600">模板内容</span>
+                        <span class="text-xs text-gray-400">用于快速填充输入框</span>
+                    </div>
+                    <textarea id="tpl-edit-content"
+                        class="flex-1 w-full p-4 resize-none focus:outline-none text-gray-700 font-mono text-sm leading-relaxed"
+                        placeholder="输入模板内容..."></textarea>
+                </div>
+
+                <div class="mt-6 flex items-center justify-between">
+                    <button id="delete-tpl-btn"
+                        class="text-red-500 hover:text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i class="ph ph-trash"></i> 删除模板
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <span id="tpl-save-status"
+                            class="text-sm text-green-600 opacity-0 transition-opacity">已保存</span>
+                        <button id="save-tpl-btn"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-sm shadow-purple-200 transition-all active:scale-95 flex items-center gap-2">
+                            <i class="ph ph-floppy-disk"></i>
+                            保存模板
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div id="editor-container" class="hidden h-full flex flex-col p-8 max-w-4xl mx-auto w-full">
@@ -130,7 +212,21 @@
                 <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                         <span class="text-sm font-medium text-gray-600">系统提示词 (System Prompt)</span>
-                        <span class="text-xs text-gray-400">支持 Markdown</span>
+                        <div class="flex items-center gap-3">
+                            <!-- Template Import Dropdown -->
+                            <div class="relative" id="prompt-template-dropdown">
+                                <button type="button" id="prompt-template-btn"
+                                    class="text-xs text-purple-600 hover:text-purple-700 font-medium px-2 py-1 rounded hover:bg-purple-50 transition-colors flex items-center gap-1">
+                                    <i class="ph ph-magic-wand"></i> 导入模板
+                                </button>
+                                <div id="prompt-template-menu"
+                                    class="hidden absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                                    <div class="px-3 py-1.5 text-xs text-gray-400 uppercase tracking-wider">选择模板</div>
+                                    <!-- Items injected by JS -->
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-400">支持 Markdown</span>
+                        </div>
                     </div>
                     <textarea id="prompt-editor"
                         class="flex-1 w-full p-4 resize-none focus:outline-none text-gray-700 font-mono text-sm leading-relaxed"

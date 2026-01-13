@@ -165,3 +165,23 @@
 .prose input[type="checkbox"] {
     margin-right: 0.5rem;
 }
+
+/* Message collapse styles */
+.msg-collapsible summary {
+    list-style: none;
+}
+
+.msg-collapsible summary::-webkit-details-marker {
+    display: none;
+}
+
+.msg-collapsible[open]>summary {
+    display: none;
+}
+
+.line-clamp-6 {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

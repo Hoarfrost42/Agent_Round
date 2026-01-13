@@ -73,6 +73,9 @@ async def stream_session_round(
         retry_config,
     )
 
+    total_speakers = len([p for p in plans if p.error is None and p.provider is not None])
+    speaker_index = 0
+
     for plan in plans:
         if plan.error is not None or plan.provider is None:
             error_message = str(plan.error or "Model not available.")
@@ -85,6 +88,8 @@ async def stream_session_round(
                 store, session_id, session_messages, base_messages, round_index, plan.model_id, error_message
             )
             continue
+
+        speaker_index += 1
 
         yield format_sse_event(
             "model_start",
@@ -104,7 +109,15 @@ async def stream_session_round(
         start_time = time.perf_counter()
         try:
             if plan.provider.supports_streaming:
-                messages = plan.messages or _attach_prompt(base_messages, plan.prompt)
+                messages = plan.messages or _attach_prompt(
+                    base_messages, plan.prompt, speaker_index, total_speakers
+                )
+                # 调试日志：查看发送给模型的消息
+                logger.info("Sending to model=%s messages_count=%s", plan.model_id, len(messages))
+                for i, msg in enumerate(messages):
+                    role = msg.get("role", "?")
+                    content = msg.get("content", "")[:80]
+                    logger.info("  [%d] role=%s content='%s...'", i, role, content)
                 collected: list[str] = []
                 async for chunk in _stream_provider(
                     plan.provider, messages, plan.model_id, settings, retry_config
@@ -135,7 +148,9 @@ async def stream_session_round(
                     if title_sent:
                         yield format_sse_event("title_generated", {"title": session_title})
             else:
-                response_text = await _await_non_stream_response(plan, base_messages, retry_config)
+                response_text = await _await_non_stream_response(
+                    plan, base_messages, retry_config, speaker_index, total_speakers
+                )
                 filtered_text = (
                     filter_thoughts(response_text)
                     if settings.thought_filter_enabled
@@ -261,13 +276,17 @@ def _build_plans(
 
 
 async def _await_non_stream_response(
-    plan: ModelPlan, base_messages: list[dict[str, str]], retry_config: RetryConfig
+    plan: ModelPlan,
+    base_messages: list[dict[str, str]],
+    retry_config: RetryConfig,
+    speaker_index: int | None = None,
+    total_speakers: int | None = None,
 ) -> str:
     """Await a non-streaming response, using prefetch when available."""
 
     if plan.prefetch_task is not None:
         return await plan.prefetch_task
-    messages = plan.messages or _attach_prompt(base_messages, plan.prompt)
+    messages = plan.messages or _attach_prompt(base_messages, plan.prompt, speaker_index, total_speakers)
     return await _generate_with_retry(plan.provider, messages, plan.model_id, retry_config, plan.provider_id)
 
 
@@ -370,15 +389,43 @@ async def _yield_chunks(text: str, chunk_size: int, delay_ms: int) -> AsyncItera
 
 
 def _message_to_payload(message: MessageRecord) -> dict[str, str]:
-    """Convert a stored message into provider payload format."""
+    """Convert a stored message into provider payload format.
+    
+    For assistant messages, prepends model identifier to help other models
+    distinguish between different speakers in the roundtable discussion.
+    """
+    content = message.content
+    # 为 assistant 消息添加模型标识，帮助后续模型区分发言者
+    if message.role == "assistant" and message.model_id:
+        # 提取模型显示名（去掉 provider 前缀）
+        model_name = message.model_id.split("/")[-1] if "/" in message.model_id else message.model_id
+        content = f"[{model_name}]: {content}"
+    return {"role": message.role, "content": content}
 
-    return {"role": message.role, "content": message.content}
 
-
-def _attach_prompt(base_messages: list[dict[str, str]], prompt: str | None) -> list[dict[str, str]]:
-    """Attach a system prompt to the base message history."""
-
+def _attach_prompt(
+    base_messages: list[dict[str, str]],
+    prompt: str | None,
+    speaker_index: int | None = None,
+    total_speakers: int | None = None,
+) -> list[dict[str, str]]:
+    """Attach a system prompt to the base message history.
+    
+    Args:
+        base_messages: The base message history.
+        prompt: The model's system prompt.
+        speaker_index: 1-based index of current speaker in this round.
+        total_speakers: Total number of speakers in this round.
+    """
     if prompt:
+        # 动态注入发言顺序信息
+        if speaker_index is not None and total_speakers is not None:
+            position_hint = f"\n\n[圆桌讨论信息] 本轮共有 {total_speakers} 位参与者，你是第 {speaker_index} 位发言。"
+            if speaker_index > 1:
+                position_hint += " 请在发言时回应前面参与者的观点，提出补充或不同看法。"
+            else:
+                position_hint += " 作为首位发言者，请先提出你的核心观点，后续参与者会基于你的观点展开讨论。"
+            prompt = prompt + position_hint
         return [{"role": "system", "content": prompt}] + list(base_messages)
     return list(base_messages)
 

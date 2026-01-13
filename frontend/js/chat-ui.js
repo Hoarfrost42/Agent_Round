@@ -138,12 +138,26 @@ function appendMessage(msg) {
                 </details>
                 ` : ''}
 
+                ${msg.content.length > 500 ? `
+                <details class="msg-collapsible">
+                    <summary class="prose prose-sm max-w-none text-gray-700 bg-white rounded-2xl rounded-tl-sm border border-gray-100 px-6 py-4 shadow-sm cursor-pointer">
+                        <div class="line-clamp-6">${Utils.parseMarkdown(msg.content)}</div>
+                        <div class="text-xs text-blue-500 mt-2 flex items-center gap-1">
+                            <i class="ph ph-caret-down"></i> 点击展开全文 (${msg.content.length} 字)
+                        </div>
+                    </summary>
+                    <div class="prose prose-sm max-w-none text-gray-700 bg-white rounded-2xl rounded-tl-sm border border-gray-100 px-6 py-4 shadow-sm mt-2">
+                        ${Utils.parseMarkdown(msg.content)}
+                    </div>
+                </details>
+                ` : `
                 <div class="prose prose-sm max-w-none text-gray-700 bg-white rounded-2xl rounded-tl-sm border border-gray-100 px-6 py-4 shadow-sm hover:shadow-md transition-shadow">
                     ${Utils.parseMarkdown(msg.content)}
                 </div>
+                `}
                 
                 <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button class="p-1 text-gray-400 hover:text-blue-600 rounded" title="复制" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.innerText)">
+                    <button class="p-1 text-gray-400 hover:text-blue-600 rounded" title="复制" onclick="navigator.clipboard.writeText(this.closest('.space-y-2').querySelector('.prose').innerText)">
                         <i class="ph ph-copy"></i>
                     </button>
                     <button class="p-1 text-gray-400 hover:text-red-500 rounded" title="反馈问题">

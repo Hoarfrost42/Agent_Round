@@ -155,3 +155,59 @@ async def stream_session(session_id: str) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+@router.get("/{session_id}/export")
+async def export_session(session_id: str) -> StreamingResponse:
+    """Export session as Markdown report."""
+    from datetime import datetime
+
+    store = get_session_store()
+    try:
+        session = store.get_session(session_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    # Build Markdown content
+    lines: list[str] = []
+    lines.append(f"# {session.title}")
+    lines.append("")
+    lines.append(f"> 导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"> 参与模型: {', '.join(session.selected_models)}")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    current_round = 0
+    for msg in session.messages:
+        # Round separator
+        if msg.round_index > current_round:
+            current_round = msg.round_index
+            lines.append(f"## 第 {current_round} 轮讨论")
+            lines.append("")
+
+        if msg.role == "user":
+            lines.append(f"### 👤 用户")
+            lines.append("")
+            lines.append(msg.content)
+            lines.append("")
+        else:
+            model_name = msg.model_id.split("/")[-1] if "/" in msg.model_id else msg.model_id
+            lines.append(f"### 🤖 {model_name}")
+            lines.append("")
+            lines.append(msg.content)
+            lines.append("")
+
+    content = "\n".join(lines)
+    from urllib.parse import quote
+    # URL 编码文件名，解决中文字符问题
+    raw_filename = f"{session.title or 'session'}_{session_id[:8]}.md"
+    encoded_filename = quote(raw_filename, safe='')
+
+    return StreamingResponse(
+        iter([content.encode('utf-8')]),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+        },
+    )

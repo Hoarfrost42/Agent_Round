@@ -107,6 +107,14 @@
                 </span>
                 <span id="status-text">讨论中...</span>
             </div>
+
+            <!-- Export Button -->
+            <button id="export-btn"
+                class="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-blue-50 hidden"
+                title="导出对话">
+                <i class="ph ph-download-simple"></i>
+                <span>导出</span>
+            </button>
         </header>
 
         <!-- Chat Area -->
@@ -124,6 +132,45 @@
         <div class="absolute bottom-6 left-0 right-0 px-6 flex justify-center z-20">
             <div
                 class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 flex items-end gap-2 transform transition-all hover:scale-[1.005]">
+
+                <!-- Template Dropdown -->
+                <div class="relative" id="template-dropdown">
+                    <button type="button" id="template-btn"
+                        class="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        title="预设模板">
+                        <i class="ph ph-magic-wand text-lg"></i>
+                    </button>
+                    <div id="template-menu"
+                        class="hidden absolute bottom-full left-0 mb-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 animate-fade-in">
+                        <div class="px-3 py-1.5 text-xs text-gray-400 uppercase tracking-wider">快速开始</div>
+                        <button
+                            class="template-item w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                            data-template="analyze">
+                            <i class="ph ph-magnifying-glass"></i> 系统分析
+                        </button>
+                        <button
+                            class="template-item w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                            data-template="code-review">
+                            <i class="ph ph-code"></i> 代码审查
+                        </button>
+                        <button
+                            class="template-item w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                            data-template="brainstorm">
+                            <i class="ph ph-lightbulb"></i> 头脑风暴
+                        </button>
+                        <button
+                            class="template-item w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                            data-template="pros-cons">
+                            <i class="ph ph-scales"></i> 利弊分析
+                        </button>
+                        <button
+                            class="template-item w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                            data-template="technical">
+                            <i class="ph ph-wrench"></i> 技术方案
+                        </button>
+                    </div>
+                </div>
+
                 <textarea id="input-textarea" rows="1" placeholder="输入指令，或按 Enter 发送..."
                     class="w-full bg-transparent border-0 focus:ring-0 p-3 resize-none max-h-32 text-gray-700 placeholder-gray-400"
                     style="min-height: 48px;"></textarea>
